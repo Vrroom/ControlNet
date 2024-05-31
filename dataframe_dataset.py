@@ -192,7 +192,7 @@ def add_random_walk (color_strokes, np_img) :
     # get shape of image, starting point and length of walk
     h, w = np_img.shape[:2]
     st_y, st_x = random.randint(0, h - 1), random.randint(0, w - 1)
-    L = 200 # random.randint(20, 100) 
+    L = random.randint(min(h, w), h * w) 
 
     # construct walk
     dirs = np.array([[-1, 0], [0, -1], [0, 1], [1, 0], [-1, -1], [-1, 1], [1, -1], [1, 1]], dtype=int)
@@ -213,7 +213,7 @@ def add_random_walk (color_strokes, np_img) :
     mask[px_points[:, 0], px_points[:, 1]] = 255
 
     # optionally, dilate the walk
-    thickness = random.choice([0, 1, 2, 4])
+    thickness = random.choice([0, 1, 2, 3, 4, 5, 6, 7, 8])
     if thickness > 0 : 
         footprint = np.ones((thickness, thickness), dtype=np.uint8) 
         mask = skimage.filters.rank.maximum(mask, footprint)
@@ -224,7 +224,8 @@ def add_random_walk (color_strokes, np_img) :
         
 def extract_color_hint (pil_img, hint_adder, target_size=512) : 
     # (optionally) blur the image by downsampling
-    apply_downsample = random.choice([0.33, 0.5, 0.75, 0.8, None])
+    ds = np.linspace(0.33, 0.99, 40).tolist() + [None]
+    apply_downsample = random.choice(ds)
     if apply_downsample is not None: 
         new_dim = int(apply_downsample * min(pil_img.size))
         pil_img = aspectRatioPreservingResizePIL(pil_img, new_dim)
@@ -234,7 +235,7 @@ def extract_color_hint (pil_img, hint_adder, target_size=512) :
     h, w = np_img.shape[:2]
     
     # figure out how many strokes to add
-    n_strokes = random.choice([2 ** i for i in range(8)])
+    n_strokes = random.choice(list(range(3, 30)))
 
     # employ hint_adder to add color hints
     color_hint = np.zeros((h, w, 4), dtype=np.uint8)
@@ -244,7 +245,7 @@ def extract_color_hint (pil_img, hint_adder, target_size=512) :
 
     # optionally downsample and upsample
     smaller_dim = min(h, w)
-    apply_downsample = random.choice([0.33, 0.5, 0.75, 0.8, None])
+    apply_downsample = random.choice(ds)
     if apply_downsample is not None :
         new_dim = int(apply_downsample * smaller_dim)
         color_hint_pil = aspectRatioPreservingResizePIL(color_hint_pil, new_dim)
@@ -263,7 +264,7 @@ def color_hints_and_outline_extractor (pil_img, target_size=512) :
     edge_map_np = np.array(edge_map) # [H, W] 
 
     # get color hint
-    hint_adder = random.choice([no_op]) # removed color scribbles
+    hint_adder = random.choice([add_random_walk]) # removed color scribbles
     color_hint = extract_color_hint(pil_img, hint_adder, target_size=target_size)
     color_hint_np = np.array(color_hint) # [H, W, 4]
 
@@ -378,6 +379,10 @@ class DataframeDataset(Dataset):
             target = (target.astype(np.float32) / 127.5) - 1.0
             if self.text_sanitizer is not None :
                 caption = self.text_sanitizer(caption)
+
+            if random.random() < 0.2 : 
+                caption = ''
+
             # Annotate
             if self.annotator is not None :
                 source = self.annotator(img)
@@ -385,7 +390,7 @@ class DataframeDataset(Dataset):
             return {'jpg': target, 'txt': caption }
         except Exception as e: 
             print(e)
-            return self.__getitem__((idx + 1) % len(self))
+            return self.__getitem__(random.randint(0, len(self) - 1))
 
 class ColorDataModule(pl.LightningDataModule):
     def __init__(self, batch_size=32, target_size=512, num_workers=10):
@@ -445,6 +450,6 @@ if  __name__ == "__main__" :
         img = batch_to_pil(batch)
         # if i < 20 :
         #     img.save(f'batch_{i}.png')
-        if i > 100000 :
+        if i > 100 :
             break
     print(batch.keys())

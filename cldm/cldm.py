@@ -358,7 +358,8 @@ class ControlLDM(LatentDiffusion):
         N = min(z.shape[0], N)
         n_row = min(z.shape[0], n_row)
         log["reconstruction"] = self.decode_first_stage(z)
-        log["control"] = c_cat * 2.0 - 1.0
+        log["control_outline"] = (c_cat * 2.0 - 1.0)[:, :1, ...]
+        log["control_color"] = (c_cat * 2.0 - 1.0)[:, 1:, ...]
         log["conditioning"] = log_txt_as_img((512, 512), batch[self.cond_stage_key], size=16)
 
         if plot_diffusion_rows:

@@ -1,9 +1,7 @@
 import json
 import cv2
 import numpy as np
-
 from torch.utils.data import Dataset
-
 
 class MyDataset(Dataset):
     def __init__(self):
@@ -31,6 +29,7 @@ class MyDataset(Dataset):
 
         # Normalize source images to [0, 1].
         source = source.astype(np.float32) / 255.0
+        source = np.concatenate((source, source[..., :2]), axis=2)
 
         # Normalize target images to [-1, 1].
         target = (target.astype(np.float32) / 127.5) - 1.0
